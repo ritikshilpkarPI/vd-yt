@@ -1,0 +1,18 @@
+# YouTube Downloader Environment Configuration
+# Copy this file to .env and configure your settings
+
+# API Configuration
+PORT=3000
+NODE_ENV=development
+YOUTUBE_API_KEY=your_youtube_api_key_here
+ALLOW_ALL=true
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Logging
+LOG_LEVEL=info
+
+# Web App Configuration
+VITE_API_BASE=https://yt.local

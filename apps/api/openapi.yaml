@@ -1,0 +1,294 @@
+openapi: 3.0.3
+info:
+  title: YouTube Downloader API
+  description: |
+    A local-only YouTube downloader API that respects copyright and licensing.
+    
+    ## Features
+    - Download YouTube videos in MP4 format
+    - Extract audio in MP3 format
+    - Compliance checking for Creative Commons licenses
+    - Rate limiting and security middleware
+    - Streaming downloads with progress tracking
+    
+    ## Compliance
+    This API enforces compliance by:
+    - Checking if videos are Creative Commons licensed
+    - Verifying channel ownership (OAuth stub)
+    - Allowing downloads only when `ALLOW_ALL=true` (for testing) or compliance rules are met
+    
+    ## Rate Limits
+    - General API: 100 requests per 15 minutes
+    - Download endpoint: 5 requests per 15 minutes per IP
+  version: 1.0.0
+  contact:
+    name: YouTube Downloader API
+    url: https://yt.local
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://yt.local
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the API service
+      operationId: getHealth
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                ok: true
+                timestamp: "2024-01-15T10:30:00.000Z"
+                version: "1.0.0"
+        '500':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/download:
+    post:
+      summary: Download YouTube video
+      description: |
+        Downloads a YouTube video in the specified format (MP4 or MP3).
+        
+        ## Compliance Rules
+        Downloads are allowed only if:
+        1. `ALLOW_ALL` environment variable is set to `true`, OR
+        2. The video has a Creative Commons license, OR
+        3. The authenticated user owns the channel (OAuth verification)
+        
+        ## Streaming Response
+        This endpoint returns a streaming response with the video/audio file.
+        The client should handle the stream appropriately and can cancel the
+        request to abort the download process.
+      operationId: downloadVideo
+      tags:
+        - Download
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DownloadRequest'
+            examples:
+              video_download:
+                summary: Download video as MP4
+                value:
+                  url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                  format: "mp4"
+              audio_download:
+                summary: Extract audio as MP3
+                value:
+                  url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                  format: "mp3"
+      responses:
+        '200':
+          description: Download stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: Attachment filename
+              schema:
+                type: string
+                example: 'attachment; filename="video.mp4"'
+            Transfer-Encoding:
+              description: Chunked transfer encoding for streaming
+              schema:
+                type: string
+                example: "chunked"
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_url:
+                  summary: Invalid YouTube URL
+                  value:
+                    error: "ValidationError"
+                    message: "URL must be a valid YouTube URL"
+                    statusCode: 400
+                    timestamp: "2024-01-15T10:30:00.000Z"
+                invalid_format:
+                  summary: Invalid format
+                  value:
+                    error: "ValidationError"
+                    message: "Format must be either mp4 or mp3"
+                    statusCode: 400
+                    timestamp: "2024-01-15T10:30:00.000Z"
+        '403':
+          description: Download not allowed due to compliance rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Forbidden"
+                message: "Download not allowed. Video must be Creative Commons licensed or you must own the channel."
+                statusCode: 403
+                timestamp: "2024-01-15T10:30:00.000Z"
+        '408':
+          description: Request timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "RequestTimeout"
+                message: "Request timeout"
+                statusCode: 408
+                timestamp: "2024-01-15T10:30:00.000Z"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "TooManyRequests"
+                message: "Too many requests from this IP, please try again later."
+                statusCode: 429
+                timestamp: "2024-01-15T10:30:00.000Z"
+          headers:
+            X-RateLimit-Limit:
+              description: Request limit per window
+              schema:
+                type: integer
+                example: 5
+            X-RateLimit-Remaining:
+              description: Remaining requests in current window
+              schema:
+                type: integer
+                example: 0
+            X-RateLimit-Reset:
+              description: Time when rate limit resets
+              schema:
+                type: integer
+                example: 1642248600
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                download_failed:
+                  summary: Download process failed
+                  value:
+                    error: "DownloadFailed"
+                    message: "Failed to download video"
+                    statusCode: 500
+                    timestamp: "2024-01-15T10:30:00.000Z"
+                process_error:
+                  summary: yt-dlp process error
+                  value:
+                    error: "DownloadError"
+                    message: "Download process failed"
+                    statusCode: 500
+                    timestamp: "2024-01-15T10:30:00.000Z"
+
+components:
+  schemas:
+    DownloadRequest:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          pattern: '^https?:\/\/(www\.)?(youtube\.com|youtu\.be)'
+          description: YouTube video URL
+          example: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        format:
+          type: string
+          enum: [mp4, mp3]
+          default: mp4
+          description: Output format (mp4 for video, mp3 for audio only)
+          example: "mp4"
+
+    HealthResponse:
+      type: object
+      required:
+        - ok
+        - timestamp
+        - version
+      properties:
+        ok:
+          type: boolean
+          description: Health status
+          example: true
+        timestamp:
+          type: string
+          format: date-time
+          description: Current server timestamp
+          example: "2024-01-15T10:30:00.000Z"
+        version:
+          type: string
+          description: API version
+          example: "1.0.0"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - statusCode
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error type/name
+          example: "ValidationError"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "URL must be a valid YouTube URL"
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+          example: "2024-01-15T10:30:00.000Z"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        OAuth bearer token for channel ownership verification.
+        Currently a stub implementation for future OAuth integration.
+
+security: []
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Download
+    description: Video download endpoints
+
+externalDocs:
+  description: GitHub Repository
+  url: https://github.com/your-org/yt-downloader
