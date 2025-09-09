@@ -8,6 +8,9 @@ import { config } from '../config';
 import logger from '../utils/logger';
 
 export const setupMiddleware = (app: Application): void => {
+  // Trust proxy for Railway deployment (fixes rate limiting warning)
+  app.set('trust proxy', 1);
+
   // Security middleware
   app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
