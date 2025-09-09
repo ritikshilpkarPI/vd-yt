@@ -47,7 +47,7 @@ COPY apps/web/nginx.conf /etc/nginx/nginx.conf
 RUN useradd -r -s /bin/false nginx
 
 # Expose ports
-EXPOSE 80 443
+EXPOSE 80
 
 # Start script
 WORKDIR /app

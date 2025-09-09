@@ -1,8 +1,11 @@
 #!/bin/bash
 
-# Start API in background
+# Start API in background on port 3000
 cd /app/api
-npm start &
+PORT=3000 npm start &
+
+# Wait a moment for API to start
+sleep 3
 
 # Start nginx in foreground
 nginx -g "daemon off;"
