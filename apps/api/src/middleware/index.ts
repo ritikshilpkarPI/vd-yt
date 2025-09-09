@@ -14,12 +14,12 @@ export const setupMiddleware = (app: Application): void => {
     contentSecurityPolicy: false, // Disable for development
   }));
 
-  // CORS configuration
+  // CORS configuration - Allow all origins for production
   app.use(cors({
-    origin: ['http://localhost:3001', 'http://localhost:3000', 'https://yt.local'],
+    origin: true, // Allow all origins
     credentials: true,
     methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   }));
 
   // Request parsing

@@ -1,4 +1,4 @@
-# API-only Dockerfile for Render
+# Render-optimized Dockerfile - API only
 FROM node:20-bullseye
 
 # Install system dependencies
@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install yt-dlp with latest version
-RUN pip3 install yt-dlp==2025.9.5
+# Install yt-dlp
+RUN pip3 install yt-dlp
 
 # Set working directory
 WORKDIR /app
@@ -39,8 +39,8 @@ RUN useradd -r -s /bin/false nodeuser && \
 # Switch to non-root user
 USER nodeuser
 
-# Expose port
-EXPOSE 10000
+# Expose port (Render will set PORT env var)
+EXPOSE $PORT
 
 # Start command
 CMD ["npm", "start"]
