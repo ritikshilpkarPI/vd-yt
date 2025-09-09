@@ -28,6 +28,7 @@ COPY apps/web/package*.json ./
 RUN npm ci
 COPY apps/web/ ./
 RUN npm run build
+RUN ls -la /app/web/dist
 
 # Production stage
 FROM base as production
